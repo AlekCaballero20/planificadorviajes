@@ -1,0 +1,952 @@
+﻿<!doctype html>
+<html lang="es-CO">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
+  <title>Brújula — Planificador de viajes</title>
+
+  <meta
+    name="description"
+    content="Planificador de viajes con Firebase, login con Google, presupuestos, actividades, empaque y viajes compartidos por correo."
+  />
+
+  <meta name="theme-color" content="#7C3AED" />
+  <meta name="color-scheme" content="light" />
+  <meta name="format-detection" content="telephone=no" />
+  <meta name="application-name" content="Brújula" />
+  <meta name="apple-mobile-web-app-title" content="Brújula" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+
+  <meta property="og:title" content="Brújula — Planificador de viajes" />
+  <meta
+    property="og:description"
+    content="Organiza viajes, presupuestos, actividades, empaque y accesos compartidos desde una app clara y bonita."
+  />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="./icons/icon-512.png" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,500;0,700;1,500;1,700&display=swap"
+    rel="stylesheet"
+  />
+
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+
+<body>
+  <noscript>
+    <div class="noscript-box">
+      Esta app necesita JavaScript para funcionar. Sí, el navegador también necesita colaborar un poquito.
+    </div>
+  </noscript>
+
+  <!-- ======================================================
+    LOADING
+  ======================================================= -->
+  <section
+    id="loadingScreen"
+    class="screen screen-loading active"
+    aria-live="polite"
+    aria-busy="true"
+    aria-hidden="false"
+  >
+    <div class="loading-card">
+      <div class="brand-mark" aria-hidden="true">🧭</div>
+
+      <h1>Brújula</h1>
+
+      <p>
+        Cargando tus viajes, tus planes y la fantasía colectiva de no olvidar nada...
+      </p>
+
+      <div class="loader" aria-hidden="true"></div>
+    </div>
+  </section>
+
+  <!-- ======================================================
+    AUTH SCREEN
+  ======================================================= -->
+  <section
+    id="authScreen"
+    class="screen auth-screen"
+    aria-labelledby="authTitle"
+    aria-hidden="true"
+  >
+    <div class="auth-bg-orb auth-bg-orb-one" aria-hidden="true"></div>
+    <div class="auth-bg-orb auth-bg-orb-two" aria-hidden="true"></div>
+
+    <main class="auth-card">
+      <div class="auth-brand">
+        <div class="brand-mark" aria-hidden="true">🧭</div>
+
+        <div>
+          <p class="eyebrow">Cata &amp; Alek travel sense</p>
+          <h1 id="authTitle">Brújula</h1>
+        </div>
+      </div>
+
+      <div class="auth-copy">
+        <h2>Viajes bonitos, presupuestos claros y maletas menos improvisadas.</h2>
+
+        <p>
+          Planea escapadas, organiza actividades, arma listas de empaque y comparte cada viaje
+          solo con las personas que deben verlo. Porque no todo el mundo necesita saber qué paseo
+          se está cocinando, gracias.
+        </p>
+      </div>
+
+      <div class="auth-highlights" aria-label="Funciones principales">
+        <article>
+          <span aria-hidden="true">🔐</span>
+          <strong>Login con Google</strong>
+          <p>Entras con tu cuenta y tus viajes quedan asociados a tu correo.</p>
+        </article>
+
+        <article>
+          <span aria-hidden="true">🧳</span>
+          <strong>Viajes separados</strong>
+          <p>Cada viaje tiene su resumen, presupuesto, actividades y empaque.</p>
+        </article>
+
+        <article>
+          <span aria-hidden="true">👥</span>
+          <strong>Compartir por correo</strong>
+          <p>Invitas personas específicas y controlas si pueden ver o editar.</p>
+        </article>
+      </div>
+
+      <div class="auth-actions">
+        <button
+          id="googleLoginBtn"
+          class="btn btn-primary btn-google"
+          type="button"
+          data-action="sign-in-google"
+        >
+          <span class="google-dot" aria-hidden="true">G</span>
+          Entrar con Google
+        </button>
+
+        <p class="auth-note">
+          Tus datos se guardarán en Firebase. La magia real la harán las reglas de seguridad,
+          no un botón escondido en HTML como si eso protegiera algo.
+        </p>
+      </div>
+    </main>
+  </section>
+
+  <!-- ======================================================
+    APP SHELL
+  ======================================================= -->
+  <div id="appShell" class="app-shell hidden" aria-hidden="true">
+    <!-- ======================================================
+      HOME
+    ======================================================= -->
+    <section
+      id="homeScreen"
+      class="screen home-screen"
+      aria-labelledby="homeTitle"
+      aria-hidden="true"
+    >
+      <header class="app-header">
+        <button
+          class="brand-button"
+          type="button"
+          data-action="go-home"
+          aria-label="Ir a mis viajes"
+        >
+          <div class="brand-mark" aria-hidden="true">🧭</div>
+
+          <div class="brand-text">
+            <strong>Brújula</strong>
+            <span>Planificador de viajes</span>
+          </div>
+        </button>
+
+        <div class="header-actions">
+          <div id="syncStatus" class="sync-status" aria-live="polite">
+            <span class="sync-dot" aria-hidden="true"></span>
+            <span id="syncStatusText">Conectando...</span>
+          </div>
+
+          <div id="userPill" class="user-pill">
+            <img id="userPhoto" src="" alt="" class="user-photo hidden" />
+
+            <div>
+              <strong id="userName">Usuario</strong>
+              <span id="userEmail">correo@ejemplo.com</span>
+            </div>
+          </div>
+
+          <button class="btn btn-soft" type="button" data-action="sign-out">
+            Salir
+          </button>
+        </div>
+      </header>
+
+      <main class="home-body">
+        <section class="hero-card">
+          <div class="hero-copy">
+            <p class="eyebrow">Mis viajes</p>
+
+            <h1 id="homeTitle">
+              Planes con mapa, bolsillo y maleta.
+            </h1>
+
+            <p id="homeSub">Cargando tus viajes...</p>
+          </div>
+
+          <div class="hero-actions">
+            <button class="btn btn-primary" type="button" data-action="create-trip">
+              + Nuevo viaje
+            </button>
+          </div>
+        </section>
+
+        <section class="home-toolbar" aria-label="Filtros de viajes">
+          <div class="search-box">
+            <span aria-hidden="true">🔎</span>
+
+            <label class="sr-only" for="tripSearchInput">
+              Buscar viajes
+            </label>
+
+            <input
+              id="tripSearchInput"
+              type="search"
+              placeholder="Buscar por destino, título o estado..."
+              autocomplete="off"
+              spellcheck="false"
+            />
+          </div>
+
+          <div class="filter-group" role="group" aria-label="Filtrar viajes">
+            <button class="filter-chip active" type="button" data-filter="all">
+              Todos
+            </button>
+
+            <button class="filter-chip" type="button" data-filter="owned">
+              Creados por mí
+            </button>
+
+            <button class="filter-chip" type="button" data-filter="shared">
+              Compartidos
+            </button>
+
+            <button class="filter-chip" type="button" data-filter="upcoming">
+              Próximos
+            </button>
+
+            <button class="filter-chip" type="button" data-filter="completed">
+              Completados
+            </button>
+          </div>
+        </section>
+
+        <section id="tripGrid" class="trip-grid" aria-live="polite">
+          <!-- home.ui.js renderiza aquí las tarjetas de viaje -->
+        </section>
+
+        <section id="emptyHomeState" class="empty-state hidden">
+          <div class="empty-icon" aria-hidden="true">🌎</div>
+
+          <h2>Todavía no hay viajes</h2>
+
+          <p>
+            Crea el primero y deja de planear en chats perdidos, notas sueltas y papelitos
+            que terminan enfrentando su destino natural: desaparecer.
+          </p>
+
+          <button class="btn btn-primary" type="button" data-action="create-trip">
+            Crear mi primer viaje
+          </button>
+        </section>
+      </main>
+    </section>
+
+    <!-- ======================================================
+      PLANNER
+    ======================================================= -->
+    <section
+      id="plannerScreen"
+      class="screen planner-screen"
+      aria-labelledby="plannerTitle"
+      aria-hidden="true"
+    >
+      <header class="planner-header">
+        <button class="btn btn-ghost" type="button" data-action="go-home">
+          ← Mis viajes
+        </button>
+
+        <div class="planner-title-wrap">
+          <div class="title-edit">
+            <label class="sr-only" for="tripTitleInput">Nombre del viaje</label>
+
+            <input
+              id="tripTitleInput"
+              class="trip-title-input"
+              type="text"
+              maxlength="120"
+              placeholder="Nombre del viaje..."
+              autocomplete="off"
+              spellcheck="false"
+              data-trip-field="title"
+            />
+
+            <h1 id="plannerTitle" class="sr-only">Detalle del viaje</h1>
+          </div>
+
+          <div id="roleBadge" class="role-badge">
+            Cargando rol...
+          </div>
+        </div>
+
+        <div class="planner-header-actions">
+          <button class="btn btn-soft" type="button" data-action="open-share-tab">
+            Compartir
+          </button>
+
+          <button class="btn btn-danger-soft" type="button" data-action="request-delete-trip">
+            Eliminar
+          </button>
+        </div>
+      </header>
+
+      <div id="readonlyNotice" class="readonly-notice hidden" role="status">
+        <span aria-hidden="true">👀</span>
+        Estás viendo este viaje en modo solo lectura. Puedes consultarlo, pero no editarlo.
+      </div>
+
+      <nav class="tabs" aria-label="Secciones del viaje">
+        <button
+          class="tab-button active"
+          type="button"
+          data-tab="resumen"
+          aria-controls="tab-resumen"
+          aria-selected="true"
+        >
+          <span aria-hidden="true">🗺️</span>
+          Resumen
+        </button>
+
+        <button
+          class="tab-button"
+          type="button"
+          data-tab="presupuesto"
+          aria-controls="tab-presupuesto"
+          aria-selected="false"
+        >
+          <span aria-hidden="true">💰</span>
+          Presupuesto
+        </button>
+
+        <button
+          class="tab-button"
+          type="button"
+          data-tab="actividades"
+          aria-controls="tab-actividades"
+          aria-selected="false"
+        >
+          <span aria-hidden="true">📍</span>
+          Actividades
+          <span id="actBadge" class="tab-badge">0</span>
+        </button>
+
+        <button
+          class="tab-button"
+          type="button"
+          data-tab="empaque"
+          aria-controls="tab-empaque"
+          aria-selected="false"
+        >
+          <span aria-hidden="true">🎒</span>
+          Empaque
+          <span id="packBadge" class="tab-badge">0</span>
+        </button>
+
+        <button
+          class="tab-button"
+          type="button"
+          data-tab="compartir"
+          aria-controls="tab-compartir"
+          aria-selected="false"
+        >
+          <span aria-hidden="true">👥</span>
+          Compartir
+        </button>
+      </nav>
+
+      <main class="planner-body">
+        <!-- ==================================================
+          RESUMEN
+        =================================================== -->
+        <section
+          id="tab-resumen"
+          class="tab-panel active"
+          aria-labelledby="resumenTitle"
+        >
+          <article class="card">
+            <div class="card-head">
+              <div>
+                <p class="eyebrow">El plan maestro</p>
+                <h2 id="resumenTitle">Detalles del viaje</h2>
+              </div>
+
+              <span class="card-icon" aria-hidden="true">✈️</span>
+            </div>
+
+            <div class="form-grid">
+              <div class="field">
+                <label for="tripDestino">Destino</label>
+
+                <input
+                  id="tripDestino"
+                  type="text"
+                  maxlength="160"
+                  placeholder="Ej. San Andrés"
+                  autocomplete="off"
+                  spellcheck="false"
+                  data-trip-field="destino"
+                />
+              </div>
+
+              <div class="field">
+                <label for="tripFechaSalida">Fecha de salida</label>
+
+                <input
+                  id="tripFechaSalida"
+                  type="date"
+                  data-trip-field="fechaSalida"
+                />
+              </div>
+
+              <div class="field">
+                <label for="tripFechaRegreso">Fecha de regreso</label>
+
+                <input
+                  id="tripFechaRegreso"
+                  type="date"
+                  data-trip-field="fechaRegreso"
+                />
+              </div>
+
+              <div class="field">
+                <label for="tripViajeros">Viajeros</label>
+
+                <input
+                  id="tripViajeros"
+                  type="number"
+                  min="1"
+                  max="99"
+                  step="1"
+                  placeholder="2"
+                  inputmode="numeric"
+                  data-trip-field="viajeros"
+                />
+              </div>
+
+              <div class="field">
+                <label for="tripTipo">Tipo de viaje</label>
+
+                <select id="tripTipo" data-trip-field="tipo">
+                  <option value="">Seleccionar...</option>
+                  <option value="🏖️ Playa y descanso">🏖️ Playa y descanso</option>
+                  <option value="🏔️ Aventura y naturaleza">🏔️ Aventura y naturaleza</option>
+                  <option value="🏛️ Cultural e histórico">🏛️ Cultural e histórico</option>
+                  <option value="🍽️ Gastronómico">🍽️ Gastronómico</option>
+                  <option value="💼 Negocios">💼 Negocios</option>
+                  <option value="👨‍👩‍👧 Familiar">👨‍👩‍👧 Familiar</option>
+                  <option value="💕 Romántico">💕 Romántico</option>
+                  <option value="🎉 Grupos y amigos">🎉 Grupos y amigos</option>
+                  <option value="🎭 Arte y cultura">🎭 Arte y cultura</option>
+                  <option value="🧘 Descanso espiritual">🧘 Descanso espiritual</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="tripEstado">Estado</label>
+
+                <select id="tripEstado" data-trip-field="estado">
+                  <option value="sonando">💭 Soñándolo</option>
+                  <option value="planificando">🗓️ Planeándolo</option>
+                  <option value="reservado">✅ Reservado</option>
+                  <option value="en-camino">🚀 En camino</option>
+                  <option value="viviendo">🌟 Viviéndolo</option>
+                  <option value="completado">📸 Ya fue, pero quedó en el alma</option>
+                </select>
+              </div>
+            </div>
+
+            <div id="statRow" class="stat-row" aria-live="polite">
+              <!-- trip.ui.js renderiza estadísticas rápidas -->
+            </div>
+
+            <div class="field field-full">
+              <label for="tripNotas">Notas generales</label>
+
+              <textarea
+                id="tripNotas"
+                rows="5"
+                maxlength="8000"
+                placeholder="Ideas, links, recordatorios, advertencias del tipo “no gastar todo en el primer día”..."
+                data-trip-field="notas"
+              ></textarea>
+            </div>
+          </article>
+        </section>
+
+        <!-- ==================================================
+          PRESUPUESTO
+        =================================================== -->
+        <section
+          id="tab-presupuesto"
+          class="tab-panel"
+          aria-labelledby="presupuestoTitle"
+        >
+          <article class="card">
+            <div class="card-head split">
+              <div>
+                <p class="eyebrow">Bolsillo bajo supervisión</p>
+                <h2 id="presupuestoTitle">Presupuesto</h2>
+              </div>
+
+              <div class="budget-summary">
+                <label class="sr-only" for="tripCurrency">Moneda</label>
+
+                <select id="tripCurrency" class="currency-select">
+                  <option value="COP $">COP $</option>
+                  <option value="USD $">USD $</option>
+                  <option value="EUR €">EUR €</option>
+                  <option value="MXN $">MXN $</option>
+                  <option value="ARS $">ARS $</option>
+                  <option value="BRL R$">BRL R$</option>
+                </select>
+
+                <div>
+                  <span class="budget-label">Gastado / Presupuesto</span>
+                  <strong id="totalAmt" class="budget-amount">$0</strong>
+                  <span id="totalSub" class="budget-sub">de $0 planificados</span>
+                </div>
+              </div>
+            </div>
+
+            <div id="budgetCats" class="budget-cats" aria-live="polite">
+              <!-- budget.ui.js renderiza categorías -->
+            </div>
+
+            <button class="add-line-button" type="button" data-action="open-category-modal">
+              + Agregar categoría
+            </button>
+          </article>
+        </section>
+
+        <!-- ==================================================
+          ACTIVIDADES
+        =================================================== -->
+        <section
+          id="tab-actividades"
+          class="tab-panel"
+          aria-labelledby="actividadesTitle"
+        >
+          <article class="card">
+            <div class="card-head">
+              <div>
+                <p class="eyebrow">Itinerario flexible</p>
+                <h2 id="actividadesTitle">Actividades</h2>
+              </div>
+
+              <span class="card-icon" aria-hidden="true">📍</span>
+            </div>
+
+            <form
+              class="inline-form"
+              id="activityForm"
+              autocomplete="off"
+              novalidate
+            >
+              <div class="field grow">
+                <label class="sr-only" for="actName">Nombre de la actividad</label>
+
+                <input
+                  id="actName"
+                  type="text"
+                  maxlength="120"
+                  placeholder="Ej. Johnny Cay, atardecer, museo, comer como si no hubiera mañana..."
+                  autocomplete="off"
+                  spellcheck="false"
+                />
+              </div>
+
+              <div class="field compact">
+                <label class="sr-only" for="actDate">Fecha</label>
+                <input id="actDate" type="date" />
+              </div>
+
+              <div class="field compact small">
+                <label class="sr-only" for="actTime">Hora</label>
+                <input id="actTime" type="time" />
+              </div>
+
+              <div class="field compact">
+                <label class="sr-only" for="actCat">Categoría</label>
+
+                <select id="actCat">
+                  <option value="🍽️ Comida">🍽️ Comida</option>
+                  <option value="🏛️ Cultural">🏛️ Cultural</option>
+                  <option value="🏖️ Playa">🏖️ Playa</option>
+                  <option value="🧗 Aventura">🧗 Aventura</option>
+                  <option value="🛍️ Compras">🛍️ Compras</option>
+                  <option value="🚌 Transporte">🚌 Transporte</option>
+                  <option value="🏨 Alojamiento">🏨 Alojamiento</option>
+                  <option value="📸 Fotos y paseos">📸 Fotos y paseos</option>
+                  <option value="🎉 Entretenimiento">🎉 Entretenimiento</option>
+                  <option value="🧘 Descanso">🧘 Descanso</option>
+                  <option value="⚙️ Otro" selected>⚙️ Otro</option>
+                </select>
+              </div>
+
+              <div class="field compact small">
+                <label class="sr-only" for="actCost">Costo</label>
+
+                <input
+                  id="actCost"
+                  type="number"
+                  min="0"
+                  step="1000"
+                  placeholder="Costo"
+                  inputmode="decimal"
+                />
+              </div>
+
+              <button class="btn btn-primary" type="submit" data-action="add-activity">
+                + Agregar
+              </button>
+            </form>
+
+            <div id="activitiesContainer" class="days-wrap" aria-live="polite">
+              <!-- activities.ui.js renderiza actividades -->
+            </div>
+          </article>
+        </section>
+
+        <!-- ==================================================
+          EMPAQUE
+        =================================================== -->
+        <section
+          id="tab-empaque"
+          class="tab-panel"
+          aria-labelledby="empaqueTitle"
+        >
+          <article class="card">
+            <div class="card-head">
+              <div>
+                <p class="eyebrow">Maleta con dignidad</p>
+                <h2 id="empaqueTitle">Lista de empaque</h2>
+              </div>
+
+              <span class="card-icon" aria-hidden="true">🎒</span>
+            </div>
+
+            <form
+              class="inline-form"
+              id="packingForm"
+              autocomplete="off"
+              novalidate
+            >
+              <div class="field grow">
+                <label class="sr-only" for="packItem">Artículo</label>
+
+                <input
+                  id="packItem"
+                  type="text"
+                  maxlength="120"
+                  placeholder="Ej. Protector solar, cargador, documentos, paciencia..."
+                  autocomplete="off"
+                  spellcheck="false"
+                />
+              </div>
+
+              <div class="field compact">
+                <label class="sr-only" for="packCat">Categoría</label>
+
+                <select id="packCat">
+                  <option value="📄 Documentos">📄 Documentos</option>
+                  <option value="👕 Ropa">👕 Ropa</option>
+                  <option value="🪥 Higiene">🪥 Higiene</option>
+                  <option value="💊 Medicamentos">💊 Medicamentos</option>
+                  <option value="📱 Electrónicos">📱 Electrónicos</option>
+                  <option value="🎒 Accesorios">🎒 Accesorios</option>
+                  <option value="🍫 Snacks">🍫 Snacks</option>
+                  <option value="📦 Otros" selected>📦 Otros</option>
+                </select>
+              </div>
+
+              <button class="btn btn-primary" type="submit" data-action="add-pack-item">
+                + Agregar
+              </button>
+
+              <button class="btn btn-soft" type="button" data-action="add-default-pack">
+                Lista base
+              </button>
+            </form>
+
+            <div class="progress-row">
+              <div
+                class="progress-track"
+                role="progressbar"
+                aria-label="Progreso de empaque"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                aria-valuenow="0"
+              >
+                <div id="packBar" class="progress-fill" style="width: 0%"></div>
+              </div>
+
+              <div id="packLbl" class="progress-label">
+                Empaque: <strong>0%</strong>
+              </div>
+            </div>
+
+            <div id="packContainer" class="pack-grid" aria-live="polite">
+              <!-- packing.ui.js renderiza empaque -->
+            </div>
+          </article>
+        </section>
+
+        <!-- ==================================================
+          COMPARTIR
+        =================================================== -->
+        <section
+          id="tab-compartir"
+          class="tab-panel"
+          aria-labelledby="compartirTitle"
+        >
+          <article class="card">
+            <div class="card-head">
+              <div>
+                <p class="eyebrow">Acceso por correo</p>
+                <h2 id="compartirTitle">Compartir este viaje</h2>
+              </div>
+
+              <span class="card-icon" aria-hidden="true">👥</span>
+            </div>
+
+            <p class="section-intro">
+              Agrega correos específicos para que cada persona vea solo los viajes que le compartieron.
+              Nada de “todos ven todo”, porque eso no es colaboración: es una novela esperando pasar.
+            </p>
+
+            <form
+              id="shareForm"
+              class="share-form"
+              autocomplete="off"
+              novalidate
+            >
+              <div class="field grow">
+                <label for="shareEmail">Correo de la persona</label>
+
+                <input
+                  id="shareEmail"
+                  type="email"
+                  placeholder="persona@correo.com"
+                  autocomplete="email"
+                  spellcheck="false"
+                />
+              </div>
+
+              <div class="field compact">
+                <label for="shareRole">Permiso</label>
+
+                <select id="shareRole">
+                  <option value="viewer">Solo ver</option>
+                  <option value="editor">Puede editar</option>
+                </select>
+              </div>
+
+              <button class="btn btn-primary" type="button" data-action="share-trip">
+                Compartir
+              </button>
+            </form>
+
+            <div class="share-help">
+              <strong>Roles:</strong>
+              <span><b>Owner</b> puede editar, compartir y eliminar.</span>
+              <span><b>Editor</b> puede modificar el viaje.</span>
+              <span><b>Viewer</b> solo puede mirar y juzgar en silencio.</span>
+            </div>
+
+            <div id="sharedPeopleList" class="people-list" aria-live="polite">
+              <!-- app.js renderiza personas con acceso -->
+            </div>
+          </article>
+        </section>
+      </main>
+    </section>
+  </div>
+
+  <!-- ======================================================
+    MODAL: NUEVA CATEGORÍA
+  ======================================================= -->
+  <div id="categoryModal" class="modal-overlay" aria-hidden="true">
+    <section
+      class="modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="categoryModalTitle"
+    >
+      <div class="modal-head">
+        <h2 id="categoryModalTitle">Nueva categoría</h2>
+
+        <button
+          class="icon-button"
+          type="button"
+          data-action="close-modal"
+          data-modal="categoryModal"
+          aria-label="Cerrar"
+        >
+          ×
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="field">
+          <label for="newCatIcon">Ícono</label>
+
+          <input
+            id="newCatIcon"
+            type="text"
+            maxlength="8"
+            placeholder="🏠"
+            autocomplete="off"
+            spellcheck="false"
+          />
+        </div>
+
+        <div class="field">
+          <label for="newCatName">Nombre</label>
+
+          <input
+            id="newCatName"
+            type="text"
+            maxlength="80"
+            placeholder="Ej. Alojamiento"
+            autocomplete="off"
+            spellcheck="false"
+          />
+        </div>
+
+        <div class="field">
+          <label for="newCatBudget">Presupuesto planificado</label>
+
+          <input
+            id="newCatBudget"
+            type="number"
+            min="0"
+            step="1000"
+            placeholder="0"
+            inputmode="decimal"
+          />
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button
+          class="btn btn-soft"
+          type="button"
+          data-action="close-modal"
+          data-modal="categoryModal"
+        >
+          Cancelar
+        </button>
+
+        <button
+          class="btn btn-primary"
+          type="button"
+          data-action="confirm-add-category"
+        >
+          Agregar
+        </button>
+      </div>
+    </section>
+  </div>
+
+  <!-- ======================================================
+    MODAL: CONFIRMAR ELIMINAR VIAJE
+  ======================================================= -->
+  <div id="deleteTripModal" class="modal-overlay" aria-hidden="true">
+    <section
+      class="modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="deleteTripModalTitle"
+    >
+      <div class="modal-head">
+        <h2 id="deleteTripModalTitle">Eliminar viaje</h2>
+
+        <button
+          class="icon-button"
+          type="button"
+          data-action="close-modal"
+          data-modal="deleteTripModal"
+          aria-label="Cerrar"
+        >
+          ×
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <p>
+          ¿Seguro que quieres eliminar
+          <strong id="deleteTripName">este viaje</strong>?
+        </p>
+
+        <p class="danger-text">
+          Esta acción no se puede deshacer. Ni con buena vibra, ni con incienso,
+          ni culpando a Mercurio retrógrado.
+        </p>
+      </div>
+
+      <div class="modal-actions">
+        <button
+          class="btn btn-soft"
+          type="button"
+          data-action="close-modal"
+          data-modal="deleteTripModal"
+        >
+          Cancelar
+        </button>
+
+        <button
+          class="btn btn-danger"
+          type="button"
+          data-action="confirm-delete-trip"
+        >
+          Eliminar definitivamente
+        </button>
+      </div>
+    </section>
+  </div>
+
+  <!-- ======================================================
+    TOAST
+  ======================================================= -->
+  <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true">
+    <span id="toastIcon" aria-hidden="true">✨</span>
+    <span id="toastText">Listo</span>
+  </div>
+
+  <!-- ======================================================
+    APP ENTRYPOINT
+  ======================================================= -->
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+{
+  "id": "./",
+  "name": "Brújula — Planificador de viajes",
+  "short_name": "Brújula",
+  "description": "Planifica viajes, presupuestos, actividades, listas de empaque y viajes compartidos por correo.",
+  "lang": "es-CO",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui", "browser"],
+  "orientation": "portrait",
+  "background_color": "#FFFAF4",
+  "theme_color": "#7C3AED",
+  "categories": ["travel", "productivity", "utilities"],
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Mis viajes",
+      "short_name": "Viajes",
+      "description": "Ver todos los viajes creados y compartidos.",
+      "url": "./",
+      "icons": [
+        {
+          "src": "./icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
+}
