@@ -124,6 +124,12 @@ function handleBudgetClick(event) {
       return;
     }
 
+    const categoryLabel = getCategoryLabelFromDeleteButton(actionTarget);
+
+    if (!confirmDeleteBudgetCategory(categoryLabel)) {
+      return;
+    }
+
     budgetUIState.callbacks.onDeleteCategory?.({
       tripId: budgetUIState.tripId,
       index,
@@ -218,6 +224,29 @@ function isValidBudgetEdit(index, field) {
     Number.isInteger(index) &&
     index >= 0 &&
     EDITABLE_BUDGET_FIELDS.has(field)
+  );
+}
+
+function getCategoryLabelFromDeleteButton(button) {
+  const item = button?.closest?.(".budget-cat");
+  const label = item?.querySelector?.(".cat-name span:last-child")?.textContent;
+
+  return cleanText(label, DEFAULT_CATEGORY_NAME).slice(0, 80);
+}
+
+function confirmDeleteBudgetCategory(categoryLabel = DEFAULT_CATEGORY_NAME) {
+  const label = cleanText(categoryLabel, DEFAULT_CATEGORY_NAME).slice(0, 80);
+
+  return window.confirm(
+    `¿Seguro que quieres borrar la categoría “${label}”?
+
+Esto quitará su presupuesto y lo gastado registrado. Esta acción no se puede deshacer.`
+  );
+}
+
+export function isBudgetFieldEditing() {
+  return Boolean(
+    document.activeElement?.matches?.("[data-budget-index][data-budget-field]")
   );
 }
 
