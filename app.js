@@ -43,7 +43,11 @@ import {
   TRIP_TABS,
 } from "./ui/trip.ui.js";
 
-import { initBudgetUI, renderBudget } from "./ui/budget.ui.js";
+import {
+  initBudgetUI,
+  renderBudget,
+  isBudgetFieldEditing,
+} from "./ui/budget.ui.js";
 
 import {
   initActivitiesUI,
@@ -246,7 +250,10 @@ function initUI() {
         index,
         field,
         value,
-        { debounce: !immediate }
+        {
+          debounce: !immediate,
+          rerender: Boolean(immediate),
+        }
       );
     },
 
@@ -512,7 +519,9 @@ function subscribeTrips() {
           return;
         }
 
-        renderCurrentTrip();
+        if (!isBudgetFieldEditing()) {
+          renderCurrentTrip();
+        }
       }
     },
 
@@ -779,7 +788,7 @@ function clearPendingOpenTrip() {
 async function updateTripPatch(
   tripId,
   patch,
-  { debounce = true } = {}
+  { debounce = true, rerender = true } = {}
 ) {
   const trip = getTrip(tripId);
 
@@ -793,10 +802,12 @@ async function updateTripPatch(
   mergePendingPatch(tripId, patch);
   applyLocalPatch(tripId, patch);
 
-  if (state.currentTripId === tripId) {
-    renderCurrentTrip();
-  } else {
-    renderHomeScreen();
+  if (rerender) {
+    if (state.currentTripId === tripId) {
+      renderCurrentTrip();
+    } else {
+      renderHomeScreen();
+    }
   }
 
   setSyncStatus(SYNC_STATUS.loading, "Guardando...");
