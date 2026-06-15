@@ -192,7 +192,7 @@ function handleBudgetChange(event) {
 
   const value = normalizeBudgetNumber(budgetInput.value);
 
-  budgetInput.value = value || "";
+  budgetInput.value = value ? formatThousands(value) : "";
 
   budgetUIState.callbacks.onUpdateCategoryField?.({
     tripId: budgetUIState.tripId,
@@ -379,12 +379,10 @@ export function createBudgetCategoryElement({
 
       <div class="budget-inputs">
         <input
-          type="number"
-          min="0"
-          step="1000"
-          inputmode="decimal"
+          type="text"
+          inputmode="numeric"
           placeholder="Gastado"
-          value="${spent || ""}"
+          value="${spent ? formatThousands(spent) : ""}"
           title="Monto gastado"
           aria-label="Monto gastado en ${escapeAttr(label)}"
           data-budget-index="${index}"
@@ -395,12 +393,10 @@ export function createBudgetCategoryElement({
         <span class="budget-separator">de</span>
 
         <input
-          type="number"
-          min="0"
-          step="1000"
-          inputmode="decimal"
+          type="text"
+          inputmode="numeric"
           placeholder="Presupuesto"
-          value="${budget || ""}"
+          value="${budget ? formatThousands(budget) : ""}"
           title="Presupuesto planificado"
           aria-label="Presupuesto planificado para ${escapeAttr(label)}"
           data-budget-index="${index}"
@@ -693,6 +689,10 @@ export function formatMoney(value, currency = DEFAULT_CURRENCY) {
   const number = normalizeBudgetNumber(value);
 
   return `${symbol}${number.toLocaleString("es-CO")}`;
+}
+
+export function formatThousands(value) {
+  return normalizeBudgetNumber(value).toLocaleString("es-CO");
 }
 
 export function formatCompactMoney(value, currency = DEFAULT_CURRENCY) {

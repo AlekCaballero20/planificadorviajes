@@ -391,7 +391,33 @@ export function buildTripStats(trip) {
     });
   }
 
+  const budgetTotal = sumBudget(trip);
+
+  if (budgetTotal > 0) {
+    stats.push({
+      icon: "💰",
+      label: `Presupuesto: <strong>${formatTripMoney(budgetTotal, trip.currency)}</strong>`,
+    });
+  }
+
   return stats;
+}
+
+function sumBudget(trip) {
+  const cats = Array.isArray(trip?.budgetCats) ? trip.budgetCats : [];
+
+  return cats.reduce((acc, cat) => acc + toNumber(cat?.budget), 0);
+}
+
+function formatTripMoney(value, currency = "COP $") {
+  const raw = String(currency || "COP $").trim();
+  const symbol = raw.includes("R$")
+    ? "R$"
+    : raw.includes("€")
+      ? "€"
+      : "$";
+
+  return `${symbol}${toNumber(value).toLocaleString("es-CO")}`;
 }
 
 function renderStatPill(stat) {

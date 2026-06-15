@@ -142,6 +142,14 @@ function bindHomeEvents() {
 }
 
 function handleHomeClick(event) {
+  const filterTarget = event.target.closest(".filter-chip");
+
+  if (filterTarget?.dataset.filter) {
+    setHomeFilter(filterTarget.dataset.filter);
+    homeState.callbacks.onFilterChange?.(homeState.filter);
+    return;
+  }
+
   const actionTarget = event.target.closest("[data-action]");
   if (!actionTarget) return;
 
@@ -168,13 +176,6 @@ function handleHomeClick(event) {
     const tripId = actionTarget.dataset.tripId;
     if (tripId) homeState.callbacks.onDeleteTrip?.(tripId);
     return;
-  }
-
-  const filterTarget = event.target.closest(".filter-chip");
-
-  if (filterTarget?.dataset.filter) {
-    setHomeFilter(filterTarget.dataset.filter);
-    homeState.callbacks.onFilterChange?.(homeState.filter);
   }
 }
 
