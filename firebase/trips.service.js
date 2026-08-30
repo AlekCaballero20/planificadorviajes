@@ -714,6 +714,7 @@ export function createPackItem({
   name,
   cat = "📦 Otros",
   packed = false,
+  returned = false,
 } = {}) {
   if (!name?.trim()) {
     throw new Error("El artículo necesita nombre.");
@@ -724,6 +725,7 @@ export function createPackItem({
     name: name.trim().slice(0, 120),
     cat: cleanText(cat, "📦 Otros").slice(0, 80),
     packed: Boolean(packed),
+    returned: Boolean(returned),
   };
 }
 
@@ -774,11 +776,15 @@ export function getPackingTotals(trip) {
     (acc, item) => {
       acc.total += 1;
       acc.packed += item.packed ? 1 : 0;
+      acc.returned += item.returned ? 1 : 0;
+      acc.missing += item.packed && !item.returned ? 1 : 0;
       return acc;
     },
     {
       total: 0,
       packed: 0,
+      returned: 0,
+      missing: 0,
     }
   );
 }
@@ -978,6 +984,7 @@ function normalizePackItems(items = []) {
       name: cleanText(item?.name, "Artículo").slice(0, 120),
       cat: cleanText(item?.cat, "📦 Otros").slice(0, 80),
       packed: Boolean(item?.packed),
+      returned: Boolean(item?.returned),
     }))
     .filter((item) => item.name);
 }

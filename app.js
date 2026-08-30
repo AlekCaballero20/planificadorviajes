@@ -281,12 +281,24 @@ function initUI() {
 
     onAddDefaultPackItems: addDefaultPack,
 
-    onTogglePackItem: ({ tripId, packId }) => {
-      togglePackItem(tripId, packId);
+    onTogglePackItem: ({ tripId, packId, field }) => {
+      togglePackItem(tripId, packId, field);
     },
 
     onDeletePackItem: ({ tripId, packId }) => {
       deletePackItem(tripId, packId);
+    },
+
+    onBulkPackItems: ({ tripId, field, value }) => {
+      bulkSetPackItems(tripId, field, value);
+    },
+
+    onExportPackItems: ({ tripId }) => {
+      exportPackItems(tripId);
+    },
+
+    onImportPackItems: ({ tripId, raw, error }) => {
+      importPackItems(tripId, raw, error);
     },
   });
 }
@@ -1185,7 +1197,7 @@ function getPackItemIdentity(item) {
   ).toLowerCase();
 }
 
-function togglePackItem(tripId, packId) {
+function togglePackItem(tripId, packId, field = "packed") {
   const trip = getTrip(tripId);
 
   if (!trip || !canEditTrip(trip, state.user)) {
@@ -1193,13 +1205,15 @@ function togglePackItem(tripId, packId) {
     return;
   }
 
+  const safeField = field === "returned" ? "returned" : "packed";
+
   const packItems = (Array.isArray(trip.packItems) ? trip.packItems : [])
     .map((item) => {
       if (item.id !== packId) return item;
 
       return {
         ...item,
-        packed: !item.packed,
+        [safeField]: !item[safeField],
       };
     });
 
@@ -1226,6 +1240,168 @@ function deletePackItem(tripId, packId) {
     { packItems },
     { debounce: false }
   );
+}
+
+function bulkSetPackItems(tripId, field, value) {
+  const trip = getTrip(tripId) || currentTrip();
+
+  if (!trip || !canEditTrip(trip, state.user)) {
+    showReadonlyToast();
+    return;
+  }
+
+  const safeField = field === "returned" ? "returned" : "packed";
+
+  const currentItems = Array.isArray(trip.packItems) ? trip.packItems : [];
+
+  if (!currentItems.length) {
+    showWarningToast("La lista está vacía.");
+    return;
+  }
+
+  const packItems = currentItems.map((item) => ({
+    ...item,
+    [safeField]: Boolean(value),
+  }));
+
+  updateTripPatch(
+    trip.id,
+    { packItems },
+    { debounce: false }
+  );
+}
+
+function exportPackItems(tripId) {
+  const trip = getTrip(tripId) || currentTrip();
+
+  if (!trip) return;
+
+  const packItems = Array.isArray(trip.packItems) ? trip.packItems : [];
+
+  if (!packItems.length) {
+    showWarningToast("No hay artículos para exportar.");
+    return;
+  }
+
+  const payload = {
+    app: "brujula",
+    type: "packing-checklist",
+    version: 1,
+    trip: trip.title || trip.destino || "Viaje",
+    exportedAt: new Date().toISOString(),
+    items: packItems.map((item) => ({
+      name: item.name,
+      cat: item.cat,
+      packed: Boolean(item.packed),
+      returned: Boolean(item.returned),
+    })),
+  };
+
+  const blob = new Blob(
+    [JSON.stringify(payload, null, 2)],
+    { type: "application/json" }
+  );
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = `checklist-${new Date().toISOString().slice(0, 10)}.json`;
+
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+
+  URL.revokeObjectURL(url);
+
+  showSuccessToast("Checklist exportado.");
+}
+
+function importPackItems(tripId, raw, error) {
+  if (error) {
+    showWarningToast("No se pudo leer el archivo.");
+    return;
+  }
+
+  const trip = getTrip(tripId) || currentTrip();
+
+  if (!trip || !canEditTrip(trip, state.user)) {
+    showReadonlyToast();
+    return;
+  }
+
+  let parsedItems = [];
+
+  try {
+    const data = JSON.parse(raw || "{}");
+
+    const rawItems = Array.isArray(data)
+      ? data
+      : Array.isArray(data.items)
+        ? data.items
+        : Array.isArray(data.packItems)
+          ? data.packItems
+          : null;
+
+    if (!rawItems) {
+      throw new Error("Formato inválido");
+    }
+
+    /*
+      Acepta también exportaciones del checklist viejo, donde la categoría
+      venía como "category" y sin emoji. Nadie merece re-teclear su maleta.
+    */
+    parsedItems = rawItems
+      .map((item) => {
+        try {
+          return createPackItem({
+            name: String(item?.name || "").trim(),
+            cat: String(item?.cat || item?.category || "📦 Otros"),
+            packed: Boolean(item?.packed),
+            returned: Boolean(item?.returned),
+          });
+        } catch (itemError) {
+          return null;
+        }
+      })
+      .filter(Boolean);
+  } catch (parseError) {
+    showWarningToast("Ese archivo no parece un checklist válido.");
+    return;
+  }
+
+  if (!parsedItems.length) {
+    showWarningToast("El archivo no trae artículos.");
+    return;
+  }
+
+  const currentItems = Array.isArray(trip.packItems) ? trip.packItems : [];
+
+  const mergeResult = mergePackItemsWithoutDuplicates(
+    currentItems,
+    parsedItems
+  );
+
+  const mergedItems = Array.isArray(mergeResult)
+    ? mergeResult
+    : currentItems;
+
+  const addedItems = Array.isArray(mergeResult?.addedItems)
+    ? mergeResult.addedItems
+    : inferAddedItems(currentItems, mergedItems);
+
+  if (!addedItems.length) {
+    showWarningToast("Esos artículos ya están en la lista.");
+    return;
+  }
+
+  updateTripPatch(
+    trip.id,
+    { packItems: mergedItems },
+    { debounce: false }
+  );
+
+  showSuccessToast(`${addedItems.length} artículo(s) importados.`);
 }
 
 /* =========================================================

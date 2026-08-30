@@ -1,8 +1,9 @@
 /* =========================================================
   packing.ui.js
-  UI de Empaque para Brújula
-  Renderiza lista de empaque, progreso, categorías,
-  lista base y acciones de marcar/eliminar artículos.
+  UI de Empaque / Checklist de viaje para Brújula
+  Renderiza la lista en dos fases (ida y regreso), progreso,
+  categorías, filtros, resumen, lista base, acciones masivas,
+  export/import y acciones de marcar/eliminar artículos.
 ========================================================= */
 
 /* =========================================================
@@ -77,6 +78,47 @@ const PACK_DOM_IDS = Object.freeze({
   bar: "packBar",
   label: "packLbl",
   badge: "packBadge",
+
+  search: "packSearch",
+  status: "packStatus",
+  catFilter: "packCatFilter",
+
+  statTotal: "packStatTotal",
+  statPacked: "packStatPacked",
+  statReturned: "packStatReturned",
+  statMissing: "packStatMissing",
+
+  importFile: "packImportFile",
+});
+
+/* Fases del checklist: lo que se empaca al salir y lo que vuelve a casa. */
+export const PACK_PHASES = Object.freeze({
+  packed: "packed",
+  returned: "returned",
+});
+
+const PHASE_COPY = Object.freeze({
+  packed: {
+    progressLabel: "Empaque",
+    progressAria: "Progreso de empaque",
+    checkOn: "Marcar como pendiente de empacar",
+    checkOff: "Marcar como empacado",
+    doneBadge: "✅ Empacado",
+    pendingBadge: "⬜ Pendiente",
+    emptyTitle: "Lista vacía.",
+    emptyText: "Agrega artículos o usa la lista base para no empacar como personaje secundario.",
+  },
+  returned: {
+    progressLabel: "Regreso",
+    progressAria: "Progreso de regreso",
+    checkOn: "Marcar como no devuelto",
+    checkOff: "Marcar como devuelto a casa",
+    doneBadge: "✅ De vuelta",
+    pendingBadge: "⬜ Pendiente",
+    missingBadge: "⚠️ Falta",
+    emptyTitle: "Nada que revisar todavía.",
+    emptyText: "Agrega artículos en la fase de ida y aquí confirmas que todo volvió contigo.",
+  },
 });
 
 const PACK_ACTIONS = Object.freeze({
@@ -84,6 +126,10 @@ const PACK_ACTIONS = Object.freeze({
   addDefault: "add-default-pack",
   toggleItem: "toggle-pack-item",
   deleteItem: "delete-pack-item",
+  setPhase: "set-pack-phase",
+  bulk: "bulk-pack",
+  exportItems: "export-pack",
+  importItems: "import-pack",
 });
 
 /* =========================================================
@@ -93,11 +139,21 @@ const PACK_ACTIONS = Object.freeze({
 const packingUIState = {
   readonly: true,
   tripId: null,
+  phase: PACK_PHASES.packed,
+  items: [],
+  filters: {
+    search: "",
+    status: "all",
+    cat: "all",
+  },
   callbacks: {
     onAddPackItem: null,
     onAddDefaultPackItems: null,
     onTogglePackItem: null,
     onDeletePackItem: null,
+    onBulkPackItems: null,
+    onExportPackItems: null,
+    onImportPackItems: null,
   },
 };
 
@@ -114,12 +170,15 @@ export function initPackingUI(options = {}) {
   bindPackingEvents();
   hydratePackingCategoryField();
 
+  setPackingPhase(packingUIState.phase, { silent: true });
+
   return {
     render: renderPacking,
     clear: clearPackingUI,
     setReadonly: setPackingReadonlyMode,
     clearForm: clearPackingForm,
     collectForm: collectPackingForm,
+    setPhase: setPackingPhase,
   };
 }
 
@@ -136,6 +195,9 @@ function bindPackingEvents() {
   */
   document.addEventListener("submit", handlePackingSubmit, true);
   document.addEventListener("keydown", handlePackingKeydown);
+  document.addEventListener("input", handlePackingFilterChange);
+  document.addEventListener("change", handlePackingFilterChange);
+  document.addEventListener("change", handlePackingImportFile);
 }
 
 /* =========================================================
@@ -160,6 +222,46 @@ function handlePackingClick(event) {
     return;
   }
 
+  if (action === PACK_ACTIONS.setPhase) {
+    event.preventDefault();
+    setPackingPhase(actionTarget.dataset.phase);
+    return;
+  }
+
+  if (action === PACK_ACTIONS.bulk) {
+    event.preventDefault();
+
+    if (packingUIState.readonly) return;
+
+    packingUIState.callbacks.onBulkPackItems?.({
+      tripId: packingUIState.tripId,
+      field: packingUIState.phase,
+      value: actionTarget.dataset.value === "true",
+    });
+
+    return;
+  }
+
+  if (action === PACK_ACTIONS.exportItems) {
+    event.preventDefault();
+
+    packingUIState.callbacks.onExportPackItems?.({
+      tripId: packingUIState.tripId,
+      packItems: packingUIState.items.slice(),
+    });
+
+    return;
+  }
+
+  if (action === PACK_ACTIONS.importItems) {
+    event.preventDefault();
+
+    if (packingUIState.readonly) return;
+
+    document.getElementById(PACK_DOM_IDS.importFile)?.click();
+    return;
+  }
+
   if (action === PACK_ACTIONS.toggleItem) {
     event.preventDefault();
 
@@ -170,6 +272,7 @@ function handlePackingClick(event) {
     packingUIState.callbacks.onTogglePackItem?.({
       tripId: packingUIState.tripId,
       packId,
+      field: actionTarget.dataset.phase || packingUIState.phase,
     });
 
     return;
@@ -220,6 +323,88 @@ function handlePackingKeydown(event) {
   confirmAddPackItem();
 }
 
+function handlePackingFilterChange(event) {
+  const targetId = event.target?.id;
+
+  if (
+    targetId !== PACK_DOM_IDS.search &&
+    targetId !== PACK_DOM_IDS.status &&
+    targetId !== PACK_DOM_IDS.catFilter
+  ) {
+    return;
+  }
+
+  packingUIState.filters = {
+    search: getValue(PACK_DOM_IDS.search),
+    status: getValue(PACK_DOM_IDS.status) || "all",
+    cat: getValue(PACK_DOM_IDS.catFilter) || "all",
+  };
+
+  renderPackingList(packingUIState.items);
+}
+
+function handlePackingImportFile(event) {
+  if (event.target?.id !== PACK_DOM_IDS.importFile) return;
+
+  const file = event.target.files?.[0];
+
+  event.target.value = "";
+
+  if (!file || packingUIState.readonly) return;
+
+  const reader = new FileReader();
+
+  reader.onload = () => {
+    packingUIState.callbacks.onImportPackItems?.({
+      tripId: packingUIState.tripId,
+      raw: String(reader.result || ""),
+    });
+  };
+
+  reader.onerror = () => {
+    packingUIState.callbacks.onImportPackItems?.({
+      tripId: packingUIState.tripId,
+      raw: "",
+      error: "read-error",
+    });
+  };
+
+  reader.readAsText(file);
+}
+
+/* =========================================================
+  FASE (IDA / REGRESO)
+========================================================= */
+
+export function setPackingPhase(phase, { silent = false } = {}) {
+  const safePhase = phase === PACK_PHASES.returned
+    ? PACK_PHASES.returned
+    : PACK_PHASES.packed;
+
+  packingUIState.phase = safePhase;
+
+  document
+    .querySelectorAll(`[data-action="${PACK_ACTIONS.setPhase}"]`)
+    .forEach((button) => {
+      const isActive = button.dataset.phase === safePhase;
+      button.classList.toggle("active", isActive);
+      button.setAttribute("aria-selected", isActive ? "true" : "false");
+    });
+
+  const track = document
+    .getElementById(PACK_DOM_IDS.bar)
+    ?.closest?.(".progress-track");
+
+  if (track) {
+    track.setAttribute("aria-label", PHASE_COPY[safePhase].progressAria);
+  }
+
+  if (silent) return;
+
+  renderPackingProgress(packingUIState.items);
+  renderPackingList(packingUIState.items);
+}
+
 /* =========================================================
   RENDER PRINCIPAL
 ========================================================= */
@@ -244,9 +429,12 @@ export function renderPacking({
 
   packingUIState.tripId = trip?.id || packingUIState.tripId || null;
   packingUIState.readonly = Boolean(readonly);
+  packingUIState.items = safeItems;
 
   hydratePackingCategoryField(safeItems);
+  hydratePackingCategoryFilter(safeItems);
   renderPackingProgress(safeItems);
+  renderPackingStats(safeItems);
   renderPackingList(safeItems);
   setPackingReadonlyMode(packingUIState.readonly);
 }
@@ -256,6 +444,7 @@ export function renderPackingList(packItems = []) {
   if (!container) return;
 
   const safeItems = normalizePackItems(packItems);
+  const visibleItems = filterPackItems(safeItems);
 
   container.innerHTML = "";
 
@@ -264,7 +453,12 @@ export function renderPackingList(packItems = []) {
     return;
   }
 
-  const groups = groupPackItemsByCategory(safeItems);
+  if (!visibleItems.length) {
+    container.innerHTML = renderNoMatchesPacking();
+    return;
+  }
+
+  const groups = groupPackItemsByCategory(visibleItems);
   const sortedCategories = sortPackCategories(Object.keys(groups));
 
   const fragment = document.createDocumentFragment();
@@ -305,7 +499,7 @@ export function renderPackingProgress(packItems = []) {
   }
 
   if (packLbl) {
-    packLbl.innerHTML = `Empaque: <strong>${progress.percent}%</strong> (${progress.packed}/${progress.total})`;
+    packLbl.innerHTML = `${PHASE_COPY[packingUIState.phase].progressLabel}: <strong>${progress.percent}%</strong> (${progress.done}/${progress.total})`;
   }
 
   if (packBadge) {
@@ -315,19 +509,75 @@ export function renderPackingProgress(packItems = []) {
   }
 }
 
+/* =========================================================
+  RESUMEN (TOTAL / EMPACADOS / DEVUELTOS / FALTANTES)
+========================================================= */
+
+export function renderPackingStats(packItems = []) {
+  const totals = getPackingStats(packItems);
+
+  setText(PACK_DOM_IDS.statTotal, totals.total);
+  setText(PACK_DOM_IDS.statPacked, totals.packed);
+  setText(PACK_DOM_IDS.statReturned, totals.returned);
+  setText(PACK_DOM_IDS.statMissing, totals.missing);
+}
+
+export function getPackingStats(packItems = []) {
+  const safeItems = normalizePackItems(packItems);
+
+  return {
+    total: safeItems.length,
+    packed: safeItems.filter((item) => item.packed).length,
+    returned: safeItems.filter((item) => item.returned).length,
+    /* Se llevó pero todavía no confirma que volvió: candidato a perderse. */
+    missing: safeItems.filter((item) => item.packed && !item.returned).length,
+  };
+}
+
 export function getPackingProgress(packItems = []) {
   const safeItems = normalizePackItems(packItems);
 
   const total = safeItems.length;
   const packed = safeItems.filter((item) => item.packed).length;
-  const percent = total ? Math.round((packed / total) * 100) : 0;
+  const returned = safeItems.filter((item) => item.returned).length;
+  const done = packingUIState.phase === PACK_PHASES.returned ? returned : packed;
+  const percent = total ? Math.round((done / total) * 100) : 0;
 
   return {
     total,
     packed,
-    pending: Math.max(total - packed, 0),
+    returned,
+    done,
+    pending: Math.max(total - done, 0),
     percent,
   };
+}
+
+/* =========================================================
+  FILTROS
+========================================================= */
+
+export function filterPackItems(packItems = []) {
+  const { search, status, cat } = packingUIState.filters;
+  const query = normalizeSearch(search);
+  const phase = packingUIState.phase;
+
+  return normalizePackItems(packItems).filter((item) => {
+    if (cat !== "all" && item.cat !== cat) return false;
+
+    const checked = Boolean(item[phase]);
+
+    if (status === "checked" && !checked) return false;
+    if (status === "unchecked" && checked) return false;
+    if (status === "missing" && !(item.packed && !item.returned)) return false;
+
+    if (!query) return true;
+
+    return (
+      normalizeSearch(item.name).includes(query) ||
+      normalizeSearch(item.cat).includes(query)
+    );
+  });
 }
 
 /* =========================================================
@@ -346,7 +596,8 @@ export function createPackCategoryElement({
   section.className = "pack-cat-card";
   section.dataset.packCategory = safeCategory;
 
-  const packedCount = safeItems.filter((item) => item.packed).length;
+  const phase = packingUIState.phase;
+  const packedCount = safeItems.filter((item) => item[phase]).length;
 
   section.innerHTML = `
     <div class="pack-cat-title">
@@ -381,24 +632,45 @@ export function createPackItemElement({
 } = {}) {
   const safeItem = normalizePackItem(item);
 
+  const phase = packingUIState.phase;
+  const checked = Boolean(safeItem[phase]);
+  const copy = PHASE_COPY[phase];
+  const isMissing = safeItem.packed && !safeItem.returned;
+
+  const badge = checked
+    ? copy.doneBadge
+    : phase === PACK_PHASES.returned && isMissing
+      ? copy.missingBadge
+      : copy.pendingBadge;
+
   const row = document.createElement("div");
-  row.className = `pack-item ${safeItem.packed ? "packed" : ""}`;
+  row.className = [
+    "pack-item",
+    checked ? "packed" : "",
+    !checked && phase === PACK_PHASES.returned && isMissing ? "missing" : "",
+  ].filter(Boolean).join(" ");
   row.dataset.packId = safeItem.id;
+  row.dataset.packPhase = phase;
 
   row.innerHTML = `
     <button
-      class="pack-chk ${safeItem.packed ? "checked" : ""}"
+      class="pack-chk ${checked ? "checked" : ""}"
       type="button"
-      aria-label="${safeItem.packed ? "Marcar como pendiente" : "Marcar como empacado"}"
+      aria-pressed="${checked ? "true" : "false"}"
+      aria-label="${checked ? copy.checkOn : copy.checkOff}"
       data-action="toggle-pack-item"
       data-pack-id="${escapeAttr(safeItem.id)}"
+      data-phase="${phase}"
       ${readonly ? "disabled" : ""}
     >
-      ${safeItem.packed ? "✓" : ""}
+      ${checked ? "✓" : ""}
     </button>
 
-    <span class="pack-txt" title="${escapeAttr(safeItem.name)}">
-      ${escapeHTML(safeItem.name || "Artículo")}
+    <span class="pack-body">
+      <span class="pack-txt" title="${escapeAttr(safeItem.name)}">
+        ${escapeHTML(safeItem.name || "Artículo")}
+      </span>
+      <span class="pack-state">${badge}</span>
     </span>
 
     <button
@@ -510,6 +782,7 @@ export function createPackItem({
   packed = false,
   done = false,
   checked = false,
+  returned = false,
 } = {}) {
   const finalName = normalizePackName(name || text || title || label);
 
@@ -522,6 +795,7 @@ export function createPackItem({
     name: finalName.slice(0, 120),
     cat: normalizePackCategory(cat || category || group),
     packed: Boolean(packed || done || checked),
+    returned: Boolean(returned),
   };
 }
 
@@ -573,6 +847,13 @@ export function setPackingReadonlyMode(readonly = true) {
     });
 
   document
+    .querySelectorAll('[data-action="bulk-pack"], [data-action="import-pack"]')
+    .forEach((button) => {
+      button.disabled = packingUIState.readonly;
+      button.setAttribute("aria-disabled", packingUIState.readonly ? "true" : "false");
+    });
+
+  document
     .querySelectorAll('[data-action="toggle-pack-item"], [data-action="delete-pack-item"]')
     .forEach((button) => {
       button.disabled = packingUIState.readonly;
@@ -585,12 +866,26 @@ export function setPackingReadonlyMode(readonly = true) {
 ========================================================= */
 
 function renderEmptyPacking() {
+  const copy = PHASE_COPY[packingUIState.phase];
+
   return `
     <div class="empty" style="grid-column: 1 / -1;">
       <div class="ei" aria-hidden="true">🎒</div>
       <p>
-        Lista vacía.<br>
-        Agrega artículos o usa la lista base para no empacar como personaje secundario.
+        ${escapeHTML(copy.emptyTitle)}<br>
+        ${escapeHTML(copy.emptyText)}
+      </p>
+    </div>
+  `;
+}
+
+function renderNoMatchesPacking() {
+  return `
+    <div class="empty" style="grid-column: 1 / -1;">
+      <div class="ei" aria-hidden="true">🔎</div>
+      <p>
+        Ningún artículo coincide con el filtro.<br>
+        Cambia la búsqueda o el estado y vuelve a intentar.
       </p>
     </div>
   `;
@@ -599,6 +894,17 @@ function renderEmptyPacking() {
 export function clearPackingUI() {
   packingUIState.tripId = null;
   packingUIState.readonly = true;
+  packingUIState.items = [];
+  packingUIState.filters = {
+    search: "",
+    status: "all",
+    cat: "all",
+  };
+
+  setFieldValue(PACK_DOM_IDS.search, "");
+  setFieldValue(PACK_DOM_IDS.status, "all");
+  setFieldValue(PACK_DOM_IDS.catFilter, "all");
+  setPackingPhase(PACK_PHASES.packed, { silent: true });
 
   const container = document.getElementById(PACK_DOM_IDS.container);
 
@@ -607,6 +913,8 @@ export function clearPackingUI() {
   }
 
   renderPackingProgress([]);
+  renderPackingStats([]);
+  hydratePackingCategoryFilter([]);
 
   clearPackingForm({
     keepCategory: false,
@@ -651,8 +959,10 @@ function sortPackItems(a, b) {
   const itemA = normalizePackItem(a);
   const itemB = normalizePackItem(b);
 
-  if (Boolean(itemA.packed) !== Boolean(itemB.packed)) {
-    return itemA.packed ? 1 : -1;
+  const phase = packingUIState.phase;
+
+  if (Boolean(itemA[phase]) !== Boolean(itemB[phase])) {
+    return itemA[phase] ? 1 : -1;
   }
 
   return normalizeSearch(itemA.name).localeCompare(
@@ -736,6 +1046,7 @@ export function normalizePackItem(item = {}) {
       name: "",
       cat: DEFAULT_PACK_CATEGORY,
       packed: false,
+      returned: false,
     };
   }
 
@@ -759,6 +1070,7 @@ export function normalizePackItem(item = {}) {
     name: name.slice(0, 120),
     cat,
     packed: Boolean(item.packed || item.done || item.checked),
+    returned: Boolean(item.returned),
   };
 }
 
@@ -825,9 +1137,38 @@ function hydratePackingCategoryField(items = []) {
   }
 }
 
+function hydratePackingCategoryFilter(items = []) {
+  const field = document.getElementById(PACK_DOM_IDS.catFilter);
+  if (!field) return;
+
+  const current = field.value || packingUIState.filters.cat || "all";
+
+  const categories = sortPackCategories(
+    Array.from(new Set(normalizePackItems(items).map((item) => item.cat)))
+  );
+
+  field.innerHTML = [
+    '<option value="all">Todas las categorías</option>',
+    ...categories.map((category) => {
+      const safe = escapeAttr(category);
+      return `<option value="${safe}">${escapeHTML(category)}</option>`;
+    }),
+  ].join("");
+
+  field.value = categories.includes(current) ? current : "all";
+  packingUIState.filters.cat = field.value;
+}
+
 /* =========================================================
   HELPERS DOM
 ========================================================= */
+
+function setText(id, value) {
+  const node = document.getElementById(id);
+  if (!node) return;
+
+  node.textContent = String(value ?? "");
+}
 
 function getValue(id) {
   return document.getElementById(id)?.value ?? "";

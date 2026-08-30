@@ -5,7 +5,7 @@
 ========================================================= */
 
 const APP_NAME = "brujula";
-const CACHE_VERSION = "v1.0.3";
+const CACHE_VERSION = "v1.1.0";
 
 const STATIC_CACHE = `${APP_NAME}-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `${APP_NAME}-runtime-${CACHE_VERSION}`;

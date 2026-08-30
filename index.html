@@ -650,7 +650,10 @@
             <div class="card-head">
               <div>
                 <p class="eyebrow">Maleta con dignidad</p>
-                <h2 id="empaqueTitle">Lista de empaque</h2>
+                <h2 id="empaqueTitle">Checklist de viaje</h2>
+                <p class="card-sub">
+                  Marca lo que empacas al salir y confirma que todo vuelve contigo.
+                </p>
               </div>
 
               <span class="card-icon" aria-hidden="true">🎒</span>
@@ -699,6 +702,84 @@
               </button>
             </form>
 
+            <div class="pack-phases" role="tablist" aria-label="Fase del checklist">
+              <button
+                class="pack-phase active"
+                type="button"
+                role="tab"
+                aria-selected="true"
+                data-action="set-pack-phase"
+                data-phase="packed"
+              >
+                <span aria-hidden="true">🧳</span>
+                Ida · empacar
+              </button>
+
+              <button
+                class="pack-phase"
+                type="button"
+                role="tab"
+                aria-selected="false"
+                data-action="set-pack-phase"
+                data-phase="returned"
+              >
+                <span aria-hidden="true">🏠</span>
+                Regreso · traer de vuelta
+              </button>
+            </div>
+
+            <div class="pack-toolbar">
+              <div class="field grow">
+                <label class="sr-only" for="packSearch">Buscar artículo</label>
+
+                <input
+                  id="packSearch"
+                  type="search"
+                  placeholder="Buscar en la lista..."
+                  autocomplete="off"
+                />
+              </div>
+
+              <div class="field compact">
+                <label class="sr-only" for="packStatus">Estado</label>
+
+                <select id="packStatus">
+                  <option value="all" selected>Todos</option>
+                  <option value="checked">Marcados</option>
+                  <option value="unchecked">Sin marcar</option>
+                  <option value="missing">Faltantes</option>
+                </select>
+              </div>
+
+              <div class="field compact">
+                <label class="sr-only" for="packCatFilter">Categoría</label>
+
+                <select id="packCatFilter">
+                  <option value="all" selected>Todas las categorías</option>
+                </select>
+              </div>
+
+              <div class="pack-bulk">
+                <button
+                  class="btn btn-soft btn-sm"
+                  type="button"
+                  data-action="bulk-pack"
+                  data-value="true"
+                >
+                  Marcar todo
+                </button>
+
+                <button
+                  class="btn btn-soft btn-sm"
+                  type="button"
+                  data-action="bulk-pack"
+                  data-value="false"
+                >
+                  Desmarcar
+                </button>
+              </div>
+            </div>
+
             <div class="progress-row">
               <div
                 class="progress-track"
@@ -718,6 +799,45 @@
 
             <div id="packContainer" class="pack-grid" aria-live="polite">
               <!-- packing.ui.js renderiza empaque -->
+            </div>
+
+            <div class="pack-stats">
+              <div class="pack-stat">
+                <span class="pack-stat-value" id="packStatTotal">0</span>
+                <span class="pack-stat-label">Artículos</span>
+              </div>
+
+              <div class="pack-stat">
+                <span class="pack-stat-value" id="packStatPacked">0</span>
+                <span class="pack-stat-label">Empacados</span>
+              </div>
+
+              <div class="pack-stat">
+                <span class="pack-stat-value" id="packStatReturned">0</span>
+                <span class="pack-stat-label">De vuelta</span>
+              </div>
+
+              <div class="pack-stat is-alert">
+                <span class="pack-stat-value" id="packStatMissing">0</span>
+                <span class="pack-stat-label">Faltantes</span>
+              </div>
+            </div>
+
+            <div class="pack-io">
+              <button class="btn btn-soft btn-sm" type="button" data-action="export-pack">
+                Exportar JSON
+              </button>
+
+              <button class="btn btn-soft btn-sm" type="button" data-action="import-pack">
+                Importar JSON
+              </button>
+
+              <input
+                id="packImportFile"
+                type="file"
+                accept="application/json,.json"
+                hidden
+              />
             </div>
           </article>
         </section>

@@ -351,6 +351,10 @@ export function createTripCard({
   const packItems = Array.isArray(trip?.packItems) ? trip.packItems : [];
   const packTotal = packItems.length;
   const packDone = packItems.filter((item) => item.packed).length;
+  /* Se llevó y todavía no confirma que volvió: lo que suele perderse. */
+  const packMissing = packItems.filter(
+    (item) => item.packed && !item.returned
+  ).length;
 
   card.innerHTML = `
     <button
@@ -377,6 +381,7 @@ export function createTripCard({
           ${nights !== null ? `<span class="trip-stat">🌙 <strong>${nights}</strong> noche${nights === 1 ? "" : "s"}</span>` : ""}
           ${activitiesCount ? `<span class="trip-stat">📍 <strong>${activitiesCount}</strong> act.</span>` : ""}
           ${packTotal ? `<span class="trip-stat">🎒 <strong>${packDone}/${packTotal}</strong></span>` : ""}
+          ${packMissing ? `<span class="trip-stat trip-stat-alert">⚠️ <strong>${packMissing}</strong> por volver</span>` : ""}
           ${totals.budget ? `<span class="trip-stat">💰 <strong>${formatCompactMoney(totals.budget, trip.currency)}</strong></span>` : ""}
         </div>
 
